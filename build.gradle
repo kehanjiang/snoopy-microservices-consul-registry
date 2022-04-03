@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    compile library.snoopy_base
+    compile library.snoopy_grpc_base
     compile library.consul_client
 }
 
