@@ -1,0 +1,11 @@
+ext {
+    snoopyVersion = "1.0.0-RC1"
+    consulClientVersion = "1.5.1"
+
+    library = [
+            //snoopy-microservices
+            snoopy_base  : "com.snoopy:snoopy-grpc-base:${snoopyVersion}",
+            //consul
+            consul_client: "com.orbitz.consul:consul-client:${consulClientVersion}"
+    ]
+}
