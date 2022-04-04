@@ -10,14 +10,9 @@ import com.snoopy.grpc.base.registry.IRegistryProvider;
  */
 public class ConsulRegistryProvider implements IRegistryProvider {
     public static final String REGISTRY_PROTOCOL_CONSUL = "consul";
-    private GrpcRegistryProperties grpcRegistryProperties;
-
-    public ConsulRegistryProvider(GrpcRegistryProperties grpcRegistryProperties) {
-        this.grpcRegistryProperties = grpcRegistryProperties;
-    }
 
     @Override
-    public IRegistry newRegistryInstance() {
+    public IRegistry newRegistryInstance(GrpcRegistryProperties grpcRegistryProperties) {
         return new ConsulRegistry(grpcRegistryProperties);
     }
 
