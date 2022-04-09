@@ -1,5 +1,5 @@
 ext {
-    snoopyGrpcBaseVersion = "1.0.0-RC1"
+    snoopyGrpcBaseVersion = "1.0.0-RC2"
     consulClientVersion = "1.5.1"
     library = [
             //snoopy-grpc-base
