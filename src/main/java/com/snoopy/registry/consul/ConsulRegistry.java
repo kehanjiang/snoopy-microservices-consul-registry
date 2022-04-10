@@ -17,6 +17,7 @@ import com.snoopy.grpc.base.registry.RegistryServiceInfo;
 import com.snoopy.grpc.base.utils.LoggerBaseUtil;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
@@ -173,6 +174,20 @@ public class ConsulRegistry implements IRegistry {
                 LoggerBaseUtil.warn(this, "fail to check pass for url: " + registryServiceInfo.getPath() + ", check id is: " + checkId, t);
             }
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (svHealth != null) {
+            svHealth.stop();
+        }
+        if (ttlConsulCheckExecutor != null) {
+            ttlConsulCheckExecutor.shutdown();
+        }
+        if (client != null) {
+            client.destroy();
+        }
+        ttlCheckIds.clear();
     }
 
     public static class NamedThreadFactory implements ThreadFactory {
