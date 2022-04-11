@@ -159,7 +159,7 @@ public class ConsulRegistry implements IRegistry {
     }
 
     private String buildId(RegistryServiceInfo registryServiceInfo) {
-        return Hashing.murmur3_32()
+        return Hashing.murmur3_128()
                 .hashString(registryServiceInfo.getFullPath(), StandardCharsets.UTF_8)
                 .toString();
     }
