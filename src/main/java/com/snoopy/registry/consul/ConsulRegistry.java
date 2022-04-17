@@ -95,6 +95,7 @@ public class ConsulRegistry implements IRegistry {
             ServiceHealthCache svcHealth = serviceHealthCacheMap.get(serviceName);
             if (svcHealth != null) {
                 svcHealth.stop();
+                serviceHealthCacheMap.remove(serviceName);
             }
         } catch (Exception e) {
             throw new RuntimeException("[" + serviceInfo.getPath() + "] unsubscribe failed !", e);
