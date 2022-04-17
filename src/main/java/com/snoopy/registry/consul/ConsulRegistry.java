@@ -36,7 +36,7 @@ public class ConsulRegistry implements IRegistry {
     private static final String TAG_SERVICE = "snoopy";
 
     private Consul client;
-    private ServiceHealthCache svHealth;
+    private Map<String, ServiceHealthCache> serviceHealthCacheMap=new HashMap<>();
     private long ttl;
     private ScheduledExecutorService ttlConsulCheckExecutor;
 
@@ -57,25 +57,29 @@ public class ConsulRegistry implements IRegistry {
     public void subscribe(RegistryServiceInfo serviceInfo, ISubscribeCallback subscribeCallback) {
         reentrantLock.lock();
         try {
-            HealthClient healthClient = client.healthClient();
             String serviceName = buildName(serviceInfo);
-            svHealth = ServiceHealthCache.newCache(healthClient, serviceName);
-            svHealth.addListener((Map<ServiceHealthKey, ServiceHealth> newValues) -> {
-                // do something with updated server map
-                Collection<ServiceHealth> serviceHealths = newValues.values();
-                List<RegistryServiceInfo> serviceInfoList = serviceHealths != null ? serviceHealths.stream().map(serviceHealth -> {
-                    Service service = serviceHealth.getService();
-                    return new RegistryServiceInfo(
-                            serviceInfo.getNamespace(),
-                            service.getService(),
-                            ConsulRegistryProvider.REGISTRY_PROTOCOL_CONSUL,
-                            service.getAddress(),
-                            service.getPort(),
-                            service.getMeta());
-                }).collect(Collectors.toList()) : Collections.EMPTY_LIST;
-                subscribeCallback.handle(serviceInfoList);
-            });
-            svHealth.start();
+            ServiceHealthCache svcHealth = serviceHealthCacheMap.get(serviceName);
+            if (svcHealth == null) {
+                HealthClient healthClient = client.healthClient();
+                svcHealth = ServiceHealthCache.newCache(healthClient, serviceName);
+                svcHealth.addListener((Map<ServiceHealthKey, ServiceHealth> newValues) -> {
+                    // do something with updated server map
+                    Collection<ServiceHealth> serviceHealths = newValues.values();
+                    List<RegistryServiceInfo> serviceInfoList = serviceHealths != null ? serviceHealths.stream().map(serviceHealth -> {
+                        Service service = serviceHealth.getService();
+                        return new RegistryServiceInfo(
+                                serviceInfo.getNamespace(),
+                                service.getService(),
+                                ConsulRegistryProvider.REGISTRY_PROTOCOL_CONSUL,
+                                service.getAddress(),
+                                service.getPort(),
+                                service.getMeta());
+                    }).collect(Collectors.toList()) : Collections.EMPTY_LIST;
+                    subscribeCallback.handle(serviceInfoList);
+                });
+                svcHealth.start();
+                serviceHealthCacheMap.put(serviceName, svcHealth);
+            }
         } catch (Throwable e) {
             throw new RuntimeException("[" + serviceInfo.getPath() + "] subscribe failed !", e);
         } finally {
@@ -87,7 +91,11 @@ public class ConsulRegistry implements IRegistry {
     public void unsubscribe(RegistryServiceInfo serviceInfo) {
         reentrantLock.lock();
         try {
-            svHealth.stop();
+            String serviceName = buildName(serviceInfo);
+            ServiceHealthCache svcHealth = serviceHealthCacheMap.get(serviceName);
+            if (svcHealth != null) {
+                svcHealth.stop();
+            }
         } catch (Exception e) {
             throw new RuntimeException("[" + serviceInfo.getPath() + "] unsubscribe failed !", e);
         } finally {
@@ -99,6 +107,9 @@ public class ConsulRegistry implements IRegistry {
     public void register(RegistryServiceInfo serviceInfo) {
         reentrantLock.lock();
         try {
+            //先注销
+            unregister(serviceInfo);
+            //再注册
             Registration registration = buildService(serviceInfo);
             client.agentClient().register(registration);
             ttlCheckIds.put(registration.getId(), serviceInfo);
@@ -178,8 +189,8 @@ public class ConsulRegistry implements IRegistry {
 
     @Override
     public void close() throws IOException {
-        if (svHealth != null) {
-            svHealth.stop();
+        for (ServiceHealthCache svcHealth : serviceHealthCacheMap.values()) {
+            svcHealth.stop();
         }
         if (ttlConsulCheckExecutor != null) {
             ttlConsulCheckExecutor.shutdown();
